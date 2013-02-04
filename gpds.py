@@ -10,8 +10,6 @@ from gunicorn.app.wsgiapp import WSGIApplication
 
 from sh import file
 
-temporary = abspath('./temp')
-
 class GPDS(object):
     basepath = '.'
 
@@ -106,7 +104,7 @@ class GpdsApplication(WSGIApplication):
         if not isdir(args[0]):
             makedirs(args[0], 0755)
 
-        GPDS.basepath = args[0]
+        GPDS.basepath = abspath(args[0])
 
         proc = "gpds:main"
         self.cfg.set("default_proc_name", proc)
