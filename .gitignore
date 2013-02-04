@@ -28,3 +28,6 @@ nosetests.xml
 
 # IDE skip
 .idea
+
+# vim
+*.swp
