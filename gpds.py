@@ -1,14 +1,22 @@
 import sys
+import gunicorn
 
 from os.path import abspath, join, splitext, isfile, getsize, isdir
 from os import makedirs, unlink, getcwd
 
+from tempfile import NamedTemporaryFile
 from string import hexdigits
-from hashlib import sha1
+from shutil import move
 
 from gunicorn.app.wsgiapp import WSGIApplication
 
-from sh import file
+from sh import file, sha1sum
+
+version_info = (0, 3, 0)
+__version__ = '.'.join(map(str, version_info))
+__server__ = '%s/%s' % (__name__, __version__)
+
+gunicorn.SERVER_SOFTWARE = __server__
 
 class GPDS(object):
     basepath = '.'
@@ -38,13 +46,18 @@ class GPDS(object):
 
     def method_PUT(self, start_response):
         input = self.environ['PATH_INFO']
-        buffer = self.environ['wsgi.input'].read()
-        hash = sha1(buffer).hexdigest()
+        ext = splitext(input)[1]
 
-        if not buffer:
+        temporary = NamedTemporaryFile('wb', suffix=ext, dir=self.basepath, delete=False)
+        temporary.write(self.environ['wsgi.input'].read())
+        temporary.close()
+
+        if not getsize(temporary.name):
             return self._respond_error(start_response, error='400 Bad Request')
 
-        filename = ''.join([hash, splitext(input)[1]])
+        hash = sha1sum('-b', temporary.name).split(' ')[0]
+
+        filename = ''.join([hash, ext])
         directory = join(self.basepath, hash[0:2], hash[2:4])
         if not isdir(directory):
             makedirs(directory, 0755)
@@ -52,13 +65,10 @@ class GPDS(object):
 
         response = '201 Created'
         if not isfile(output):
-            id = open(output, 'wb')
-            id.write(buffer)
-            id.close()
+            move(temporary.name, output)
         else:
+            unlink(temporary.name)
             response = '200 OK'
-
-        del buffer
 
         start_response(response, [
             ('Location', output.replace(self.basepath, '')),
@@ -101,12 +111,21 @@ class GpdsApplication(WSGIApplication):
         if len(args) != 1:
             parser.error("No working directory specified.")
 
-        if not isdir(args[0]):
-            makedirs(args[0], 0755)
+        working_dir = args[0]
+        if not isdir(working_dir):
+            try:
+                makedirs(working_dir, 0755)
+            except OSError:
+                parser.error('Can create working directory "%s"' % working_dir)
+        else:
+            try:
+                NamedTemporaryFile(dir=working_dir).close()
+            except OSError:
+                parser.error('Can\'t write any data to the working directory "%s"' % working_dir)
 
-        GPDS.basepath = abspath(args[0])
+        GPDS.basepath = abspath(working_dir)
 
-        proc = "gpds:main"
+        proc = "%s:main" % __name__
         self.cfg.set("default_proc_name", proc)
         self.app_uri = proc
 
