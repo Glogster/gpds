@@ -12,7 +12,7 @@ from gunicorn.app.wsgiapp import WSGIApplication
 
 from sh import file, sha1sum
 
-version_info = (0, 3, 0)
+version_info = (0, 3, 1)
 __version__ = '.'.join(map(str, version_info))
 __server__ = '%s/%s' % (__name__, __version__)
 
