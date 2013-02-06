@@ -85,6 +85,6 @@ Ok, now we'll try to do previous work with Python:
         print r.status_code # 1st time - 204 (No Content = deleted), 
                             # 2nd time - 404 (Not Found = already deleted)
 
-As you can see, we'll used requests_ library, best way to do HTTP request in Python.
+As you can see, we used requests_ library, best way to do HTTP request in Python.
 
 .. _requests: http://docs.python-requests.org/en/latest/
