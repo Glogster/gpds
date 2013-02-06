@@ -6,13 +6,14 @@ from os import makedirs, unlink, getcwd
 
 from tempfile import NamedTemporaryFile
 from string import hexdigits
+from hashlib import sha1
 from shutil import move
 
 from gunicorn.app.wsgiapp import WSGIApplication
 
-from sh import file, sha1sum
+from sh import file
 
-version_info = (0, 3, 1)
+version_info = (0, 4, 0)
 __version__ = '.'.join(map(str, version_info))
 __server__ = '%s/%s' % (__name__, __version__)
 
@@ -47,16 +48,19 @@ class GPDS(object):
     def method_PUT(self, start_response):
         input = self.environ['PATH_INFO']
         ext = splitext(input)[1]
+        hash = sha1()
 
         temporary = NamedTemporaryFile('wb', suffix=ext, dir=self.basepath, delete=False)
-        temporary.write(self.environ['wsgi.input'].read())
+        for chunk in iter(lambda: self.environ['wsgi.input'].read(32768), b''):
+            hash.update(chunk)
+            temporary.write(chunk)
         temporary.close()
 
         if not getsize(temporary.name):
+            unlink(temporary.name)
             return self._respond_error(start_response, error='400 Bad Request')
 
-        hash = sha1sum('-b', temporary.name).split(' ')[0]
-
+        hash = hash.hexdigest()
         filename = ''.join([hash, ext])
         directory = join(self.basepath, hash[0:2], hash[2:4])
         if not isdir(directory):
