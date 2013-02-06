@@ -1,5 +1,5 @@
 ====================
- GPDS version 0.4.0
+ GPDS version 0.4.1
 ====================
 
 Simple GET-PUT-DELETE service (*GPDS*) to (temporary) store your files as an alternative to NFS shared folders.

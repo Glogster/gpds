@@ -6,6 +6,7 @@ from os import makedirs, unlink, getcwd
 
 from tempfile import NamedTemporaryFile
 from string import hexdigits
+from errno import EEXIST
 from hashlib import sha1
 from shutil import move
 
@@ -13,7 +14,7 @@ from gunicorn.app.wsgiapp import WSGIApplication
 
 from sh import file
 
-version_info = (0, 4, 0)
+version_info = (0, 4, 1)
 __version__ = '.'.join(map(str, version_info))
 __server__ = '%s/%s' % (__name__, __version__)
 
@@ -64,7 +65,11 @@ class GPDS(object):
         filename = ''.join([hash, ext])
         directory = join(self.basepath, hash[0:2], hash[2:4])
         if not isdir(directory):
-            makedirs(directory, 0755)
+            try:
+                makedirs(directory, 0755)
+            except OSError as e:
+                if not isdir(directory) or e.errno != EEXIST: # Some other thread already created this directory
+                    raise
         output = join(directory, filename)
 
         response = '201 Created'
