@@ -65,7 +65,9 @@ Cool, our service sent our image for us properly. Now we'll delete this file and
 
 As you can see GPDS successfully erased your file from disk and next time sent not found response for you.
 
-Ok, now we'll try to do previous work with Python::
+Ok, now we'll try to do previous work with Python:
+
+.. code-block:: python
 
     from requests import put, get, delete
 
