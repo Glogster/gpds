@@ -64,3 +64,24 @@ Cool, our service sent our image for us properly. Now we'll delete this file and
     Content-Length: 0
 
 As you can see GPDS successfully erased your file from disk and next time sent not found response for you.
+
+Ok, now we'll try to do previous work with Python::
+
+    from requests import put, get, delete
+
+    filename = 'somefile.jpg'
+    server = 'http://localhost:8000'
+    r = put('%s/%s' % (server, filename), data=open(filename, 'rb'))
+    result = ''.join([server, r.headers['Location']])
+    print result # http://localhost:8000/2c/f3/2cf3af58d2416d40e18ca5e38f5baabc8a092765.jpg
+
+    r = get(result)
+    print r.headers['Content-Type'] # image/jpeg (our image sent for us)
+
+    for _ in range(2):
+        r = delete(result)
+        print r.status_code # 1st time - 204 (No Content = deleted), 2nd time - 404 (Not Found = already deleted)
+
+As you can see, we'll used requests_ library, best way to do HTTP request in Python.
+
+.. _requests: http://docs.python-requests.org/en/latest/
