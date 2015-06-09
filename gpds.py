@@ -1,18 +1,15 @@
-import sys
-import gunicorn
-
-from os.path import abspath, join, splitext, isfile, getsize, isdir
-from os import makedirs, unlink, getcwd
-
-from tempfile import NamedTemporaryFile
-from string import hexdigits
+from datetime import datetime
 from errno import EEXIST
-from hashlib import sha1
-from shutil import move
-
-from gunicorn.app.wsgiapp import WSGIApplication
-
+from os import makedirs, unlink, getcwd
+from os.path import abspath, join, splitext, isfile, getsize, isdir
 from sh import file
+from shutil import move
+import sys
+from tempfile import NamedTemporaryFile
+from uuid import uuid4
+
+import gunicorn
+from gunicorn.app.wsgiapp import WSGIApplication
 
 version_info = (0, 4, 1)
 __version__ = '.'.join(map(str, version_info))
@@ -35,13 +32,14 @@ class GPDS(object):
             return getattr(self, method)(start_response)
 
     def _check_path(self, input):
-        parts = input.split('/')
-        hash, ext = splitext(parts[-1])
-        output = join(self.basepath, input[1:])
+        path = join(self.basepath, input[1:])
+        return isfile(path)
 
-        return len(parts) == 4 and hash.startswith(''.join(parts[1:2])) and \
-            all(c in hexdigits for c in hash) and \
-            len(hash) == 40 and isfile(output)
+    def _get_dir(self):
+        now = datetime.utcnow()
+        date = now.strftime('%Y-%m-%d')
+        hour = now.strftime('%H')
+        return join(self.basepath, date, hour)
 
     def _respond_error(self, start_response, error='404 Not Found'):
         start_response(error, [
@@ -51,12 +49,10 @@ class GPDS(object):
     def method_PUT(self, start_response):
         input = self.environ['PATH_INFO']
         ext = splitext(input)[1]
-        hash = sha1()
 
         temporary = NamedTemporaryFile('wb', suffix=ext, dir=self.basepath,
                                        delete=False)
         for chunk in iter(lambda: self.environ['wsgi.input'].read(32768), b''):
-            hash.update(chunk)
             temporary.write(chunk)
         temporary.close()
 
@@ -64,9 +60,8 @@ class GPDS(object):
             unlink(temporary.name)
             return self._respond_error(start_response, error='400 Bad Request')
 
-        hash = hash.hexdigest()
-        filename = ''.join([hash, ext])
-        directory = join(self.basepath, hash[0:2], hash[2:4])
+        filename = ''.join([str(uuid4()), ext])
+        directory = self._get_dir()
         if not isdir(directory):
             try:
                 makedirs(directory, 0755)
