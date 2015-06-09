@@ -20,6 +20,7 @@ __server__ = '%s/%s' % (__name__, __version__)
 
 gunicorn.SERVER_SOFTWARE = __server__
 
+
 class GPDS(object):
     basepath = '.'
 
@@ -39,7 +40,8 @@ class GPDS(object):
         output = join(self.basepath, input[1:])
 
         return len(parts) == 4 and hash.startswith(''.join(parts[1:2])) and \
-           all(c in hexdigits for c in hash) and len(hash) == 40 and isfile(output)
+            all(c in hexdigits for c in hash) and \
+            len(hash) == 40 and isfile(output)
 
     def _respond_error(self, start_response, error='404 Not Found'):
         start_response(error, [
@@ -51,7 +53,8 @@ class GPDS(object):
         ext = splitext(input)[1]
         hash = sha1()
 
-        temporary = NamedTemporaryFile('wb', suffix=ext, dir=self.basepath, delete=False)
+        temporary = NamedTemporaryFile('wb', suffix=ext, dir=self.basepath,
+                                       delete=False)
         for chunk in iter(lambda: self.environ['wsgi.input'].read(32768), b''):
             hash.update(chunk)
             temporary.write(chunk)
@@ -68,8 +71,10 @@ class GPDS(object):
             try:
                 makedirs(directory, 0755)
             except OSError as e:
-                if not isdir(directory) or e.errno != EEXIST: # Some other thread already created this directory
+                if not isdir(directory) or e.errno != EEXIST:
                     raise
+                # Some other thread already created the directory
+
         output = join(directory, filename)
 
         response = '201 Created'
@@ -112,8 +117,10 @@ class GPDS(object):
             ('Content-Length', 0)
         ])
 
+
 def main(environ, start_response):
     return GPDS(environ).process(start_response) or iter([''])
+
 
 class GpdsApplication(WSGIApplication):
     def init(self, parser, opts, args):
@@ -130,7 +137,8 @@ class GpdsApplication(WSGIApplication):
             try:
                 NamedTemporaryFile(dir=working_dir).close()
             except OSError:
-                parser.error('Can\'t write any data to the working directory "%s"' % working_dir)
+                msg = 'Can\'t write any data to the working directory "%s"'
+                parser.error(msg % working_dir)
 
         GPDS.basepath = abspath(working_dir)
 
@@ -139,6 +147,7 @@ class GpdsApplication(WSGIApplication):
         self.app_uri = proc
 
         sys.path.insert(0, getcwd())
+
 
 def run():
     GpdsApplication("%(prog)s [OPTIONS] DIRECTORY").run()
