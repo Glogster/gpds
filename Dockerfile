@@ -3,7 +3,7 @@ FROM centos:centos7
 RUN yum update -y && yum install -y file python-devel python-setuptools && \
     yum clean all
 
-RUN useradd -s /bin/bash gpds
+RUN useradd -s /bin/bash -u 4321 -g 4321 gpds
 
 ADD . /gpds
 
